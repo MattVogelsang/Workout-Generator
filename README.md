@@ -1,6 +1,6 @@
 # 🏋️ Workout Generator (Flask App)
 
- <a href= '[https://book-engine-2huz.onrender.com/](https://mattvogelsang.github.io/Workout-Generator/workout_generator.html)'> Link  </a>
+ <a href= '(https://mattvogelsang.github.io/Workout-Generator/workout_generator.html)'> Link  </a>
 
 A simple and fun web app built with Python and Flask that generates a custom workout routine based on user input. Great for all fitness levels — beginner to advanced!
 
