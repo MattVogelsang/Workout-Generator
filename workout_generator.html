@@ -34,6 +34,20 @@
                 </select>
             </div>
             
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    Data Source
+                </label>
+                <div class="flex items-center mb-2">
+                    <input type="radio" id="local-data" name="data-source" value="local" checked class="mr-2">
+                    <label for="local-data">Use Local Exercise Database</label>
+                </div>
+                <div class="flex items-center">
+                    <input type="radio" id="api-data" name="data-source" value="api" class="mr-2">
+                    <label for="api-data">Use Wger API (More Exercises)</label>
+                </div>
+            </div>
+            
             <button onclick="generateWorkout()" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-200">
                 Generate Workout
             </button>
@@ -43,8 +57,16 @@
             <h2 class="text-2xl font-bold mb-4 text-gray-800">Your Workout</h2>
             <div id="exercises-list" class="space-y-4"></div>
         </div>
+        
+        <div id="loading" class="max-w-md mx-auto mt-8 text-center hidden">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <p class="mt-2 text-gray-600">Loading exercises from API...</p>
+        </div>
     </div>
 
+    <!-- Load the API integration script -->
+    <script src="api_integration.js"></script>
+    
     <script>
         // Exercise data
         const EXERCISES = [
@@ -305,10 +327,43 @@
             }
         ];
 
-        function generateWorkout() {
+        // Map workout types to Wger API category IDs
+        const WORKOUT_TYPE_TO_CATEGORY = {
+            'full_body': 15, // Cardio category (closest to full body)
+            'upper_body': 8, // Arms category
+            'lower_body': 9, // Legs category
+            'core': 10 // Abs category
+        };
+
+        async function generateWorkout() {
             const workoutType = document.getElementById('workout-type').value;
             const difficulty = document.getElementById('difficulty').value;
+            const dataSource = document.querySelector('input[name="data-source"]:checked').value;
             
+            // Show loading indicator if using API
+            if (dataSource === 'api') {
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('workout-result').classList.add('hidden');
+            }
+            
+            let workout;
+            
+            if (dataSource === 'api') {
+                // Use the Wger API
+                const categoryId = WORKOUT_TYPE_TO_CATEGORY[workoutType];
+                workout = await window.WgerAPI.getRandomWorkout(categoryId, difficulty);
+                
+                // Hide loading indicator
+                document.getElementById('loading').classList.add('hidden');
+            } else {
+                // Use local exercise data
+                workout = generateLocalWorkout(workoutType, difficulty);
+            }
+            
+            displayWorkout(workout);
+        }
+        
+        function generateLocalWorkout(workoutType, difficulty) {
             // Filter exercises based on workout type and difficulty
             const availableExercises = EXERCISES.filter(
                 ex => ex.type === workoutType && ex.difficulty === difficulty
@@ -316,7 +371,7 @@
             
             if (availableExercises.length === 0) {
                 alert(`No exercises found for type: ${workoutType} and difficulty: ${difficulty}`);
-                return;
+                return [];
             }
             
             // Generate a workout with 5-8 exercises
@@ -326,9 +381,7 @@
             );
             
             // Shuffle and select exercises
-            const workout = shuffleArray(availableExercises).slice(0, numExercises);
-            
-            displayWorkout(workout);
+            return shuffleArray(availableExercises).slice(0, numExercises);
         }
         
         function shuffleArray(array) {
@@ -344,6 +397,12 @@
             const resultDiv = document.getElementById('workout-result');
             const exercisesList = document.getElementById('exercises-list');
             
+            if (!workout || workout.length === 0) {
+                exercisesList.innerHTML = '<p class="text-red-500">No exercises found. Please try a different combination.</p>';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+            
             exercisesList.innerHTML = workout.map(exercise => `
                 <div class="border-b pb-4">
                     <h3 class="font-bold text-lg text-gray-800">${exercise.name}</h3>
@@ -351,6 +410,7 @@
                     <div class="mt-2 text-sm text-gray-500">
                         <span class="font-semibold">Sets:</span> ${exercise.sets} | 
                         <span class="font-semibold">Reps:</span> ${exercise.reps}
+                        ${exercise.equipment ? ` | <span class="font-semibold">Equipment:</span> ${exercise.equipment}` : ''}
                     </div>
                 </div>
             `).join('');
